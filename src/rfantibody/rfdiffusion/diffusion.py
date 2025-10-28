@@ -8,20 +8,20 @@ from typing import List
 
 from scipy.spatial.transform import Rotation as scipy_R
 from scipy.spatial.transform import Slerp 
-import rotation_conversions
+from rfantibody.rfdiffusion import rotation_conversions
 
-from util import rigid_from_3_points, get_torsions
+from rfantibody.rfdiffusion.util import rigid_from_3_points, get_torsions
 
-from util import torsion_indices as TOR_INDICES 
-from util import torsion_can_flip as TOR_CAN_FLIP
-from util import reference_angles as REF_ANGLES
+from rfantibody.rfdiffusion.util import torsion_indices as TOR_INDICES 
+from rfantibody.rfdiffusion.util import torsion_can_flip as TOR_CAN_FLIP
+from rfantibody.rfdiffusion.util import reference_angles as REF_ANGLES
 
-from util_module import ComputeAllAtomCoords
+from rfantibody.rfdiffusion.util_module import ComputeAllAtomCoords
 
-from diff_util import th_min_angle, th_interpolate_angles, get_aa_schedule 
+from rfantibody.rfdiffusion.diff_util import th_min_angle, th_interpolate_angles, get_aa_schedule 
 
-from chemical import INIT_CRDS 
-import igso3
+from rfantibody.rf2.network.chemical import INIT_CRDS 
+from rfantibody.rfdiffusion import igso3
 import time 
 
 from icecream import ic  
@@ -507,13 +507,13 @@ class IGSO3():
         num_res = len(xyz)
 
         N  = torch.from_numpy(  xyz[None,:,0,:]  )
-        Ca = torch.from_numpy(  xyz[None,:,1,:]  )  # [1, num_res, 3, 3]
+        Ca = torch.from_numpy(  xyz[None,:,1,:]  )  # [1, num_res, 3]
         C  = torch.from_numpy(  xyz[None,:,2,:]  )
 
         # scipy rotation object for true coordinates
-        R_true, Ca = rigid_from_3_points(N,Ca,C)
-        R_true = R_true[0]
-        Ca = Ca[0]
+        R_true, Ca = rigid_from_3_points(N,Ca,C) # get rotation matrix from Gram-schmidt algorithm
+        R_true = R_true[0] # [num_res, 3, 3]
+        Ca = Ca[0] # [num_res, 3]
 
         # Sample rotations and scores from IGSO3
         sampled_rots = self.sample_vec(t, n_samples=num_res)  # [T, N, 3]
@@ -1027,12 +1027,12 @@ class Diffuser():
 
             fa_stack = torch.stack(fa_stack, dim=0)
 
-        else: 
+        else:  # this way
             # Do aa_mask logic outside of diffuse torsions logic - NRB
             # This is the same code as is present in the diffuse torsions function
             if self.aa_decode_steps != 0:
                 _, _, _, aa_masks = get_aa_schedule(self.T, L, self.aa_decode_steps)
-            else:
+            else: # this way
                 _, _, _, aa_masks = get_aa_schedule(self.T, L, 10) # 10 is dummy number. No decoding is happening. TODO clean this up
 
             # diffused_BB is [t_steps,L,3,3]

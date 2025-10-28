@@ -113,7 +113,7 @@ def main(conf: HydraConfig) -> None:
     #### Run the main design loop
     ############################################
 
-    for i_des in range(design_startnum, design_startnum + sampler.inf_conf.num_designs):
+    for i_des in range(design_startnum, design_startnum + sampler.inf_conf.num_designs): # from 0 to 200
         if conf.inference.deterministic:
             make_deterministic(i_des)
 
@@ -132,7 +132,7 @@ def main(conf: HydraConfig) -> None:
         # to track hotspots through inference
         failed=0
         while True:
-
+            # start here
             x_init, seq_init = sampler.sample_init()
             denoised_xyz_stack = []
             px0_xyz_stack = []

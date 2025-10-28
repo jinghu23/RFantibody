@@ -59,13 +59,13 @@ class MSAPairStr2MSA(nn.Module):
         B, N, L = msa.shape[:3]
 
         # prepare input bias feature by combining pair & coordinate info
-        pair = self.norm_pair(pair)
-        pair = torch.cat((pair, rbf_feat), dim=-1)
+        pair = self.norm_pair(pair) # (B, L, L, d_pair)
+        pair = torch.cat((pair, rbf_feat), dim=-1) # (B, L, L, d_pair+36)
         pair = self.proj_pair(pair) # (B, L, L, d_pair)
         #
         # update query sequence feature (first sequence in the MSA) with feedbacks (state) from SE3
-        state = self.norm_state(state)
-        state = self.proj_state(state).reshape(B, 1, L, -1)
+        state = self.norm_state(state) # (B, L, 64)
+        state = self.proj_state(state).reshape(B, 1, L, -1) # (B, 1, L, 64)
         msa = msa.index_add(1, torch.tensor([0,], device=state.device), state)
         #
         # Apply row/column attention to msa & transform 
@@ -247,29 +247,29 @@ class Str2Str(nn.Module):
             motif_mask = torch.zeros(L).bool()
         
         # process msa & pair features
-        node = self.norm_msa(msa[:,0])
-        pair = self.norm_pair(pair)
-        state = self.norm_state(state)
+        node = self.norm_msa(msa[:,0]) # (B, L, d_msa)
+        pair = self.norm_pair(pair) # (B, L, L, d_pair)
+        state = self.norm_state(state) # (B, L, d_state)
        
-        node = torch.cat((node, state), dim=-1)
-        node = self.norm_node(self.embed_x(node))
-        pair = self.norm_edge1(self.embed_e1(pair))
+        node = torch.cat((node, state), dim=-1) # (B, L, d_msa+d_state)
+        node = self.norm_node(self.embed_x(node)) # (B, L, 32)
+        pair = self.norm_edge1(self.embed_e1(pair)) # (B, L, L, 32)
         
-        neighbor = get_seqsep(idx)
-        rbf_feat = rbf(torch.cdist(xyz[:,:,1], xyz[:,:,1]))
-        pair = torch.cat((pair, rbf_feat, neighbor), dim=-1)
-        pair = self.norm_edge2(self.embed_e2(pair))
+        neighbor = get_seqsep(idx) # (B, L, L, 1)
+        rbf_feat = rbf(torch.cdist(xyz[:,:,1], xyz[:,:,1])) # (B, L, L, 36)
+        pair = torch.cat((pair, rbf_feat, neighbor), dim=-1) # (B, L, L, 32+36+1)
+        pair = self.norm_edge2(self.embed_e2(pair))  # (B, L, L, 32)
         
         # define graph
         if top_k != 0:
             G, edge_feats = make_topk_graph(xyz[:,:,1,:], pair, idx, top_k=top_k)
         else:
             G, edge_feats = make_full_graph(xyz[:,:,1,:], pair, idx, top_k=top_k)
-        l1_feats = xyz - xyz[:,:,1,:].unsqueeze(2)
-        l1_feats = l1_feats.reshape(B*L, -1, 3)
+        l1_feats = xyz - xyz[:,:,1,:].unsqueeze(2) # (B, L, 1, n, 3)
+        l1_feats = l1_feats.reshape(B*L, -1, 3) # (B*L, n, 3)
         
         # apply SE(3) Transformer & update coordinates
-        shift = self.se3(G, node.reshape(B*L, -1, 1), l1_feats, edge_feats)
+        shift = self.se3(G, node.reshape(B*L, -1, 1), l1_feats, edge_feats) # {'0': (B, L, -1), '1': (L, 2, 3)}
 
         state = shift['0'].reshape(B, L, -1) # (B, L, C)
         

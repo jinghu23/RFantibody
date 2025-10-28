@@ -2,22 +2,23 @@ import numpy as np
 import os
 import sys
 from omegaconf import DictConfig
-from kinematics import xyz_to_t2d
+from rfantibody.rf2.network.kinematics import xyz_to_t2d
 import torch
 import torch.nn.functional as nn
-from util import get_torsions
-from diffusion import get_beta_schedule, get_aa_schedule, get_chi_betaT
-from diff_util import get_aa_schedule, th_interpolate_angles, th_min_angle, th_interpolate_angle_single
+from rfantibody.rfdiffusion.util import get_torsions
+from rfantibody.rfdiffusion.diffusion import get_beta_schedule, get_aa_schedule, get_chi_betaT
+from rfantibody.rfdiffusion.diff_util import get_aa_schedule, th_interpolate_angles, th_min_angle, th_interpolate_angle_single
 from icecream import ic
 from scipy.spatial.transform import Rotation as scipy_R
 from scipy.spatial.transform import Slerp
-from util import torsion_indices as TOR_INDICES
-from util import torsion_can_flip as TOR_CAN_FLIP
-from util import reference_angles as REF_ANGLES
-from util import rigid_from_3_points
-from util_module import ComputeAllAtomCoords
-from potentials.manager import PotentialManager
-import util
+from rfantibody.rfdiffusion.util import torsion_indices as TOR_INDICES
+from rfantibody.rfdiffusion.util import torsion_can_flip as TOR_CAN_FLIP
+from rfantibody.rfdiffusion.util import reference_angles as REF_ANGLES
+from rfantibody.rfdiffusion.util import rigid_from_3_points
+from rfantibody.rfdiffusion.util_module import ComputeAllAtomCoords
+from rfantibody.rfdiffusion.potentials.manager import PotentialManager
+#import util
+from rfantibody.rf2.network.chemical import aa2num, aa2long
 import random
 import logging
 import string 
@@ -1001,7 +1002,7 @@ def parse_pdb(filename, **kwargs):
 def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True, parse_ab_loops=False):
     # indices of residues observed in the structure
     res = [(l[22:26],l[17:20]) for l in lines if l[:4]=="ATOM" and l[12:16].strip()=="CA"]
-    seq = [util.aa2num[r[1]] if r[1] in util.aa2num.keys() else 20 for r in res]
+    seq = [aa2num[r[1]] if r[1] in aa2num.keys() else 20 for r in res]
     pdb_idx = [( l[21:22].strip(), int(l[22:26].strip()) ) for l in lines if l[:4]=="ATOM" and l[12:16].strip()=="CA"]  # chain letter, res num
     loops = {
              'H1': [],
@@ -1032,7 +1033,7 @@ def parse_pdb_lines(lines, parse_hetatom=False, ignore_het_h=True, parse_ab_loop
         chain, resNo, atom, aa = l[21:22], int(l[22:26]), ' '+l[12:16].strip().ljust(3), l[17:20]
         idx = pdb_idx.index((chain,resNo))
         # for i_atm, tgtatm in enumerate(util.aa2long[util.aa2num[aa]]):
-        for i_atm, tgtatm in enumerate(util.aa2long[util.aa2num[aa]][:14]): # Nate's proposed change
+        for i_atm, tgtatm in enumerate(aa2long[aa2num[aa]][:14]): # Nate's proposed change
             if tgtatm is not None and tgtatm.strip() == atom.strip(): # ignore whitespace
                 xyz[idx,i_atm,:] = [float(l[30:38]), float(l[38:46]), float(l[46:54])]
                 break

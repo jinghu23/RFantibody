@@ -9,6 +9,7 @@ from icecream import ic
 from rfantibody.rfdiffusion.parsers import *
 from rfantibody.rfdiffusion.kinematics import xyz_to_t2d
 from rfantibody.rfdiffusion.chemical import INIT_CRDS
+from rfantibody.rfdiffusion import util
 from rfantibody.rfdiffusion.util import \
     torsion_indices as TOR_INDICES, \
     torsion_can_flip as TOR_CAN_FLIP, \
@@ -228,8 +229,8 @@ def apply_templating_scheme(item,
     ret_t1d[:,item.loop_mask,20]  = 1 
 
     ic(f'Featurizing with {T_scheme}')
-
-    if item.inputs.fixed_dock or T_scheme == 'fixed_dock':
+    if getattr(item.inputs, 'fixed_dock', False) or T_scheme == 'fixed_dock':
+    #if item.inputs.fixed_dock or T_scheme == 'fixed_dock':
         ######################################################
         ### Fixed Dock Schemes
         ######################################################

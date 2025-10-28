@@ -124,7 +124,7 @@ class Sampler:
         self.ab_conf = self._conf.antibody
         self.diffuser = Diffuser(**self._conf.diffuser)
         # TODO: Add symmetrization RMSD check here
-        if self._conf.seq_diffuser.seqdiff is None:
+        if self._conf.seq_diffuser.seqdiff is None: # go this way
             ic('Doing AR Sequence Decoding')
             self.seq_diffuser = None
 
@@ -155,7 +155,7 @@ class Sampler:
                 self.inf_conf.recenter,
                 self.inf_conf.radius, 
             )
-        else:
+        else: # this wway is for the case where we don't want to use symmetry
             self.symmetry = None
 
         self.allatom = ComputeAllAtomCoords().to(self.device)
@@ -172,7 +172,7 @@ class Sampler:
         if self.diffuser_conf.partial_T:
             assert self.diffuser_conf.partial_T <= self.diffuser_conf.T
             self.t_step_input = int(self.diffuser_conf.partial_T)
-        else:
+        else: # this way
             self.t_step_input = int(self.diffuser_conf.T)
         
         # Get recycle schedule    

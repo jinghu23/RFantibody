@@ -2,6 +2,7 @@
 
 poetry run python  /home/src/rfantibody/scripts/rfdiffusion_inference.py \
     --config-name antibody \
+    --config_path /home/src/rfantibody/configs/ \
     antibody.target_pdb=/home/scripts/examples/example_inputs/rsv_site3.pdb \
     antibody.framework_pdb=/home/scripts/examples/example_inputs/hu-4D5-8_Fv.pdb \
     inference.ckpt_override_path=/home/weights/RFdiffusion_Ab.pt \

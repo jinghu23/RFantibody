@@ -134,7 +134,7 @@ class MSA_emb(nn.Module):
     def forward(self, msa, seq, idx):
         # Inputs:
         #   - msa: Input MSA (B, N, L, d_init)
-        #   - seq: Input Sequence (B, L)
+        #   - seq: Input Sequence (B, L, 22)
         #   - idx: Residue index
         # Outputs:
         #   - msa: Initial MSA embedding (B, N, L, d_msa)
@@ -156,7 +156,7 @@ class MSA_emb(nn.Module):
         else:
             tmp = self.emb_q(seq).unsqueeze(1) # (B, 1, L, d_model) -- query embedding
         """
-        msa = msa + tmp.expand(-1, N, -1, -1) # adding query embedding to MSA
+        msa = msa + tmp.expand(-1, N, -1, -1) # adding query embedding to MSA, (B, N, L, d_model)
         msa = self.drop(msa)
 
         # pair embedding 
@@ -175,11 +175,11 @@ class MSA_emb(nn.Module):
             right = self.emb_right(seq)[:,:,None] # (B, L, 1, d_pair)
         """
         pair = left + right # (B, L, L, d_pair)
-        pair = self.pos(pair, idx) # add relative position
+        pair = self.pos(pair, idx) # add relative position [B, L, L, d_x]
 
         # state embedding
         # Sergey's one hot trick
-        state = self.drop(seq @ self.emb_state.weight)
+        state = self.drop(seq @ self.emb_state.weight) # [B, L, d_state]
         """
         #TODO delete once verified.
         if self.input_seq_onehot:
@@ -386,11 +386,18 @@ class Recycling(nn.Module):
         nn.init.zeros_(self.proj_dist.bias)
 
     def forward(self, seq, msa, pair, xyz, state):
+        """
+        seq: (B, L, 22)
+        msa: (B, L, 256)
+        pair: (B, L, L, 128)
+        xyz: (B, L, 27, 3)
+        state: (B, L, 64)
+        """
         B, L = pair.shape[:2]
         state = self.norm_state(state)
         #
-        left = state.unsqueeze(2).expand(-1,-1,L,-1)
-        right = state.unsqueeze(1).expand(-1,L,-1,-1)
+        left = state.unsqueeze(2).expand(-1,-1,L,-1) # (B, L, L, 64)
+        right = state.unsqueeze(1).expand(-1,L,-1,-1) # (B, L, L, 64)
         
         # three anchor atoms
         N  = xyz[:,:,0]
@@ -401,11 +408,11 @@ class Recycling(nn.Module):
         b = Ca - N
         c = C - Ca
         a = torch.cross(b, c, dim=-1)
-        Cb = -0.58273431*a + 0.56802827*b - 0.54067466*c + Ca    
+        Cb = -0.58273431*a + 0.56802827*b - 0.54067466*c + Ca # (B, L, 3)
         
-        dist = rbf(torch.cdist(Cb, Cb))
-        dist = torch.cat((dist, left, right), dim=-1)
-        dist = self.proj_dist(dist)
+        dist = rbf(torch.cdist(Cb, Cb)) # (B, L, L, 36)
+        dist = torch.cat((dist, left, right), dim=-1) # (B, L, L, 36+64+64)
+        dist = self.proj_dist(dist) # (B, L, L, 128)
         pair = dist + self.norm_pair(pair)
         msa = self.norm_msa(msa)
         return msa, pair, state

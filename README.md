@@ -114,7 +114,7 @@ To enable the passing of this information between steps of the pipeline, we defi
 - The Target chain(s) are denoted as chain id 'T' (even if there are multiple target chains)
 - The order of the chains in the file is Heavy then Light then Target
 - At the end of the file are PDB Remarks indicating the 1-indexed absolute (not per-chain) residue index of each of the CDR loops. For example:
-  ```
+  ```nv
   REMARK PDBinfo-LABEL:   32 H1
   REMARK PDBinfo-LABEL:   52 H2
   ```

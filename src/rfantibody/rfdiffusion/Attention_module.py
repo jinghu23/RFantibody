@@ -376,6 +376,7 @@ class BiasedAxialAttention(nn.Module):
 
     def forward(self, pair, bias):
         # pair: (B, L, L, d_pair)
+        # bias: (B, L, L, d_pair)
         B, L = pair.shape[:2]
         
         if self.is_row:
@@ -393,7 +394,7 @@ class BiasedAxialAttention(nn.Module):
         
         query = query * self.scaling
         key = key / math.sqrt(L) # normalize for tied attention
-        attn = einsum('bnihk,bnjhk->bijh', query, key) # tied attention
+        attn = einsum('bnihk,bnjhk->bijh', query, key) # tied attention, (B, L, L, h)
         attn = attn + bias # apply bias
         attn = F.softmax(attn, dim=-2) # (B, L, L, h)
         
